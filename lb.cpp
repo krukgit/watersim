@@ -10,8 +10,6 @@
 #include <GL/glew.h>
 #include <GL/glut.h>
 #include <cuda_runtime.h>
-//#include <cutil_inline.h>
-//#include <cutil_gl_error.h>
 #include <cuda_gl_interop.h>
 
 #include <helper_cuda.h>
@@ -25,14 +23,16 @@ const unsigned int mesh_width = 256;
 const unsigned int mesh_height = 256;
 
 GLuint vbo;
+GLuint uiVBOIndices;
 struct cudaGraphicsResource *cuda_vbo_resource;
 
 
 int mouse_old_x, mouse_old_y, mouse_buttons = 0;
 float rotate_x = 0.0, rotate_y = 0.0, translate_z = -3.0;
 
-bool fscreen = false;
 StopWatchInterface *timer;
+
+bool fscreen = false;
 int add = 1;
 float *d_fin, *d_fout;
 
@@ -142,15 +142,42 @@ void runCuda(struct cudaGraphicsResource **vbo_resource)
 
 void createVBO(GLuint* vbo, struct cudaGraphicsResource **vbo_res, unsigned int vbo_res_flags)
 {
+	unsigned int size = mesh_width * mesh_height * 8 * sizeof(float);
+	
+	// height data
 	glGenBuffers(1, vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, *vbo);
-	
-	unsigned int size = mesh_width * mesh_height * 8 * sizeof(float);
 	glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
-	
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	
 	checkCudaErrors(cudaGraphicsGLRegisterBuffer(vbo_res, *vbo, vbo_res_flags));
+
+	// indices 
+	int numIndices = mesh_width*2*(mesh_height-1)+mesh_height-2;
+	glGenBuffersARB(1, &uiVBOIndices);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, uiVBOIndices);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, numIndices*sizeof(GLuint), 0, GL_STATIC_DRAW);
+
+	GLuint *iIndices = (GLuint*) glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
+	
+	int i=0;
+	int restartIndex = mesh_width*mesh_height;
+	for(int y=0; y<mesh_height-1; y++)
+	{
+		int currentIndex = y*mesh_width;
+		for (int x=0; x<mesh_width; x++)
+		{
+			iIndices[i++] = currentIndex;
+			iIndices[i++] = currentIndex+mesh_width;
+			currentIndex++;														
+		}
+		if (y < mesh_height-2)
+			iIndices[i++] = restartIndex;
+	}
+	
+	glEnable(GL_PRIMITIVE_RESTART);
+	glPrimitiveRestartIndex(mesh_width*mesh_height);
+	glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 void deleteVBO(GLuint* vbo, struct cudaGraphicsResource *vbo_res)
@@ -183,9 +210,13 @@ void display()
 
     glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_COLOR_ARRAY);
-    //glColor3f(0.0, 0.5, 1.0);
-    
-	glDrawArrays(GL_POINTS, 0, mesh_width * mesh_height);
+    glColor3f(0.0, 0.5, 1.0);
+    glBindVertexArray(vbo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, uiVBOIndices);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLE_STRIP, mesh_width*2*(mesh_height-1)+mesh_height-2, GL_UNSIGNED_INT, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	//glDrawArrays(GL_POINTS, 0, mesh_width * mesh_height);
     
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_COLOR_ARRAY);
@@ -218,8 +249,6 @@ void keyboard(unsigned char key, int /*x*/, int /*y*/)
 				glutFullScreen();
 			else
 			    glutReshapeWindow(window_width, window_height);
-
-
 	}
 }
 
