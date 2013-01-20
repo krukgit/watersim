@@ -44,7 +44,7 @@ __global__ void stepKernel(unsigned int width, float *gfin, float* gfout, float 
 		fout[k] = fin[k] + (feq[k] - fin[k])/tau;
 }
 
-__global__ void proKernel(float4* pos, unsigned int width, unsigned int height, float *gfin, float* gfout)
+__global__ void proKernel(float4* pos, float4* color, unsigned int width, unsigned int height, float *gfin, float* gfout)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -62,7 +62,7 @@ __global__ void proKernel(float4* pos, unsigned int width, unsigned int height, 
 	
 	if (fout[0] < -999.0) {
 		pos[offset] = make_float4(uu,-100.0f,vv,1.0f);
-		pos[width*height + offset] = make_float4(0.,0.,0.,1.0);
+		color[offset] = make_float4(0.,0.,0.,1.0);
 		return;
 	}
 
@@ -87,7 +87,7 @@ __global__ void proKernel(float4* pos, unsigned int width, unsigned int height, 
 	pos[offset] = make_float4(uu,h-1.5f,vv,1.0f);
 	if (cScale > 1.0)
 		cScale = 1.0;
-	pos[width*height + offset] = make_float4(0.,0.5*cScale,cScale,0.0);
+	color[offset] = make_float4(0.,0.5*cScale,cScale,0.0);
 	//pos[width*height + offset] = make_float4(uu,vv,0.0,0.0);
 }
 
@@ -133,7 +133,7 @@ float fx = 0.0;
 float fy = 0.0;
 float df = 0.0001;
 // Wrapper for the __global__ call that sets up the kernel call
-extern "C" void launch_kernel(float4* pos, unsigned int mesh_width, unsigned int mesh_height, int add, float *d_fin, float *d_fout)
+extern "C" void launch_kernel(float4* pos, float4* color, unsigned int mesh_width, unsigned int mesh_height, int add, float *d_fin, float *d_fout)
 {
     dim3 block(16, 16, 1);
     dim3 grid(mesh_width / block.x, mesh_height / block.y, 1);
@@ -164,7 +164,7 @@ extern "C" void launch_kernel(float4* pos, unsigned int mesh_width, unsigned int
 		initKernel<<< grid, block >>>(mesh_width, d_fin, d_fout, 0.11);
 
     stepKernel<<< grid, block >>>(mesh_width, d_fin, d_fout, fx, fy);
-	proKernel<<< grid, block >>>(pos, mesh_width, mesh_height, d_fin, d_fout);
+	proKernel<<< grid, block >>>(pos, color, mesh_width, mesh_height, d_fin, d_fout);
 }
 
 #endif // #ifndef _SIMPLEGL_KERNEL_H_

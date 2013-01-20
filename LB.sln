@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vectorAdd", "vectorAdd_vs2010.vcxproj", "{B30D6B7C-54D2-4B05-91B4-8DFFFD693F8B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LB", "vectorAdd_vs2010.vcxproj", "{B30D6B7C-54D2-4B05-91B4-8DFFFD693F8B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

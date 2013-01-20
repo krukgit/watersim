@@ -74,7 +74,9 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>./bin/win32/$(Configuration)/</OutDir>
     <IntDir>$(Platform)/$(Configuration)/</IntDir>
-    <IncludePath>$(DXSDK_DIR)\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(NVCUDASAMPLES_ROOT)\common\inc;$(CUDA_PATH)\include;$(DXSDK_DIR)\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(NVCUDASAMPLES_ROOT)\common\lib\Win32;$(CUDA_PATH)\lib;$(LibraryPath)</LibraryPath>
+    <ExecutablePath>C:\Users\cc1\Desktop\cyclic\glew-1.6.0\bin;$(ExecutablePath)</ExecutablePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>../../bin/win64/$(Configuration)/</OutDir>
@@ -203,6 +205,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="lb.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="lb.fs" />
+    <None Include="lb.ps" />
+    <None Include="lb.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
