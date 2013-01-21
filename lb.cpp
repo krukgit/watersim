@@ -27,11 +27,6 @@ glm::mat4 projectionMatrix; // Store the projection matrix
 glm::mat4 viewMatrix; // Store the view matrix  
 glm::mat4 modelMatrix; // Store the model matrix  
 
-//GLuint vbo;
-//GLuint uiVBOIndices;
-
-//struct cudaGraphicsResource *cuda_vbo_resource;
-
 int mouse_old_x, mouse_old_y, mouse_buttons = 0;
 float rotate_x = 0.0, rotate_y = 0.0, translate_z = -3.0;
 
@@ -67,10 +62,8 @@ void initialize();
 GLhandleARB shaderProgramBuild(const GLchar *vertex, const GLchar *fragment);
 //void runCuda(struct cudaGraphicsResource **vbo_resource);
 
-struct State {
-    GLhandleARB shaderProgram;
-};
-State state;
+GLhandleARB shaderProgram;
+GLhandleARB shaderProgramGrass;
 /*
 GLchar vertexShaderSource[] = "\n\
 #version 150\n\
@@ -132,7 +125,7 @@ int main(int argc, char** argv)
 	cudaDeviceReset();
     exit(0);
 }		   
-
+/*
 bool initShaders() 
 {
 	
@@ -168,7 +161,7 @@ bool initShaders()
 	glUseProgramObjectARB(my_program);
 
 	return true;
-}
+}*/
 
 bool initGL(int *argc, char **argv)
 {
@@ -181,7 +174,7 @@ bool initGL(int *argc, char **argv)
     glutMotionFunc(motion);
 
 #ifdef _WIN32
-	FreeConsole();
+	//FreeConsole();
 #endif
 //	glutFullScreen();
 	
@@ -318,32 +311,32 @@ void display()
     if (doInitialize == true) {
         doInitialize = false;
     
-		glClearColor(0.4f, 0.0f, 0.0f, 1.0f) ;
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f) ;
 		vertexShaderSource = read("lb.vs");
 		fragmentShaderSource = read("lb.fs");
-		state.shaderProgram = shaderProgramBuild(vertexShaderSource, fragmentShaderSource);	
+		shaderProgram = shaderProgramBuild(vertexShaderSource, fragmentShaderSource);	
     }
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-	glUseProgram(state.shaderProgram);
+	glUseProgram(shaderProgram);
 	
 	
-	projectionMatrix = glm::perspective(60.0f, (float)window_width / (float)window_height, 0.1f, 100.f);  // Create our perspective projection matrix  
+	projectionMatrix = glm::perspective(30.0f, (float)window_width / (float)window_height, 0.1f, 100.f);  // Create our perspective projection matrix  
 	viewMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, translate_z)); // Create our view matrix which will translate us back 5 units  
 	viewMatrix = glm::rotate(viewMatrix, rotate_x, glm::vec3(1.0f, 0.0f, 0.0f));
 	viewMatrix = glm::rotate(viewMatrix, rotate_y, glm::vec3(0.0f, 1.0f, 0.0f));
 	modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f));  // Create our model matrix which will halve the size of our model  
 	
-		int projectionMatrixLocation = glGetUniformLocation(state.shaderProgram, "projectionMatrix");
-		int viewMatrixLocation = glGetUniformLocation(state.shaderProgram, "viewMatrix");
-		int modelMatrixLocation = glGetUniformLocation(state.shaderProgram, "modelMatrix");
+		int projectionMatrixLocation = glGetUniformLocation(shaderProgram, "projectionMatrix");
+		int viewMatrixLocation = glGetUniformLocation(shaderProgram, "viewMatrix");
+		int modelMatrixLocation = glGetUniformLocation(shaderProgram, "modelMatrix");
 		glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, &projectionMatrix[0][0]); // Send our projection matrix to the shader  
 		glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, &viewMatrix[0][0]); // Send our view matrix to the shader  
 		glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]); // Send our model matrix to the shader  
 	
     
 	//float scale = 0.5;
-	//int scaleLocation = glGetUniformLocation(state.shaderProgram, "scale");
+	//int scaleLocation = glGetUniformLocation(shaderProgram, "scale");
 	//glUniform1f(scaleLocation, scale);
 	
     glMatrixMode(GL_MODELVIEW);
@@ -354,14 +347,20 @@ void display()
 	
 
     glBindBuffer(GL_ARRAY_BUFFER, height_map);
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(4, GL_FLOAT, 0, 0);
-    //glVertexAttribPointer(height_map, 4, GL_FLOAT, GL_FALSE, 0, 0);
+	//glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableVertexAttribArray(height_map);
+	glVertexAttribPointer(height_map, 4, GL_FLOAT, GL_FALSE, sizeof(float)*4, 0);
+	//glVertexPointer(4, GL_FLOAT, 0, 0);
+	
+	//glVertexAttribPointer(height_map, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, colors);
-	glEnableClientState(GL_COLOR_ARRAY);
-	glColorPointer(4, GL_FLOAT, 0, 0);
+	//glEnableClientState(GL_COLOR_ARRAY);
+	//glColorPointer(4, GL_FLOAT, 0, 0);
+	glEnableVertexAttribArray(colors);
+	glVertexAttribPointer(colors, 4, GL_FLOAT, GL_FALSE, sizeof(float)*4, 0);
 	//glVertexAttribPointer(colors, 4, GL_FLOAT, GL_FALSE, 0, 0);
+
 
     //glEnableVertexAttribArray(height_map);
     //glEnableVertexAttribArray(colors);
@@ -372,8 +371,8 @@ void display()
 	//glColorPointer(4, GL_FLOAT, 0, (GLvoid *)0);// (mesh_width * mesh_height * sizeof(float)*4));
 
     //glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableClientState(GL_COLOR_ARRAY);
-    glColor3f(0.0, 0.5, 1.0);
+	//glEnableClientState(GL_COLOR_ARRAY);
+    //glColor3f(0.0, 0.5, 1.0);
     glBindVertexArray(height_map);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -381,8 +380,11 @@ void display()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	//glDrawArrays(GL_POINTS, 0, mesh_width * mesh_height);
     
+
+
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_COLOR_ARRAY);
+
 
     glutSwapBuffers();
     glutPostRedisplay();
@@ -548,6 +550,10 @@ GLhandleARB shaderProgramBuild(const GLchar *vertex, const GLchar *fragment)
     glAttachShader(programHandle, shaderCompile(fragment,GL_FRAGMENT_SHADER));
     // Check for any other errors and print them.
     glutReportErrors();
+	printf("%d %d\n",height_map,colors);
+
+	glBindAttribLocation(programHandle, colors, "color");
+	glBindAttribLocation(programHandle, height_map, "vertex");
 
     // Attempt to the link the shader objects into a program
     glLinkProgram(programHandle);
@@ -556,6 +562,9 @@ GLhandleARB shaderProgramBuild(const GLchar *vertex, const GLchar *fragment)
 
     // Ask GL if this source compiled.
     glGetProgramiv(programHandle, GL_LINK_STATUS, &status);
+
+	//glBindAttribLocation(programHandle, height_map, "vertex");
+    
 
     // If status is not 0, then the objects successfully 
     // linked into shader program and we return the handle we originally 

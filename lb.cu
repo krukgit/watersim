@@ -60,12 +60,6 @@ __global__ void proKernel(float4* pos, float4* color, unsigned int width, unsign
 	float* fin = gfin + offset * 9;
 	float* fout = gfout + offset * 9;
 	
-	if (fout[0] < -999.0) {
-		pos[offset] = make_float4(uu,-100.0f,vv,1.0f);
-		color[offset] = make_float4(0.,0.,0.,1.0);
-		return;
-	}
-
 	fin[0] = fout[0];
 	for (int k=1; k<9; k++)
 	{
@@ -73,7 +67,7 @@ __global__ void proKernel(float4* pos, float4* color, unsigned int width, unsign
 		int my = y + dy[k];
 		int mk = (k + 3) % 8 + 1;
 
-		if (mx < 0 || mx >= width || my < 0 || my >= height || gfout[my * width * 9 + mx * 9 + k] < -999.0) 
+		if (mx < 0 || mx >= width || my < 0 || my >= height) 
 			fin[k] = fout[mk];
 		else
 			fin[k] = gfout[my * width * 9 + mx * 9 + k];
@@ -92,15 +86,16 @@ __global__ void proKernel(float4* pos, float4* color, unsigned int width, unsign
 	//pos[width*height + offset] = make_float4(uu,vv,0.0,0.0);
 }
 
-__global__ void addDropKernel(unsigned int width, float *gfin, int i, int j, int r)
+__global__ void addDropKernel(unsigned int width, float *gfout, int i, int j, int r)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
 	int offset = x + y * width;
-	float* fin = gfin + offset * 9;
-
+	float* fout = gfout + offset * 9;
+	
 	if ((i-x)*(i-x) + (j-y)*(j-y) < r*r)
-		fin[0] += float(r*r - (i-x)*(i-x) - (j-y)*(j-y)) / float(r*r);
+		for (int k=1; k<9; k++)
+			fout[k] += float(r*r - (i-x)*(i-x) - (j-y)*(j-y)) / float(r*r) / 8.0;
 }
 
 __global__ void initKernel(unsigned int width, float *gfin, float *gfout, float ih)
@@ -138,12 +133,13 @@ extern "C" void launch_kernel(float4* pos, float4* color, unsigned int mesh_widt
 {
     dim3 block(16, 16, 1);
     dim3 grid(mesh_width / block.x, mesh_height / block.y, 1);
-	
+	stepKernel<<< grid, block >>>(mesh_width, d_fin, d_fout, fx, fy);
+
 	if (add & 2) {
 		int r = 3;
 		int x = rand() % (mesh_width-2*r) + r;
 		int y = rand() % (mesh_height-2*r) + r;
-		addDropKernel<<< grid, block >>>(mesh_width, d_fin, x, y, r);
+		addDropKernel<<< grid, block >>>(mesh_width, d_fout, x, y, r);
 	}
 	if (add & 1) 
 		initKernel<<< grid, block >>>(mesh_width, d_fin, d_fout, 0.1);
@@ -158,13 +154,13 @@ extern "C" void launch_kernel(float4* pos, float4* color, unsigned int mesh_widt
 	if (add & 64)
 		fx = fy = 0.0;
 	if (add & 128)
-		addDropKernel<<< grid, block >>>(mesh_width, d_fin, 100, 80, 3);
+		addDropKernel<<< grid, block >>>(mesh_width, d_fout, 100, 80, 3);
 	if (add & 256)
 		createBlockKernel<<< grid, block >>>(mesh_width, d_fout, 40, 40, 140, 60);
 	if (add & 512)
 		initKernel<<< grid, block >>>(mesh_width, d_fin, d_fout, 0.11);
 
-    stepKernel<<< grid, block >>>(mesh_width, d_fin, d_fout, fx, fy);
+    
 	proKernel<<< grid, block >>>(pos, color, mesh_width, mesh_height, d_fin, d_fout);
 }
 
