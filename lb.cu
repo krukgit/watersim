@@ -87,6 +87,7 @@ __global__ void proKernel(float4* pos, float4* color, unsigned int width, unsign
 	pos[offset] = make_float4(uu,h-1.5f,vv,1.0f);
 	if (cScale > 1.0)
 		cScale = 1.0;
+	//color[offset] = make_float4(0.,0.,1.,0.);
 	color[offset] = make_float4(0.,0.5*cScale,cScale,0.0);
 	//pos[width*height + offset] = make_float4(uu,vv,0.0,0.0);
 }

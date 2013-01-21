@@ -1,12 +1,20 @@
-#version 400
+#version 150
 
-in vec4 inputPosition;
-in vec4 inputColor;
+uniform mat4 projectionMatrix;
+uniform mat4 viewMatrix;
+uniform mat4 modelMatrix;
 
-out vec3 color;
+in vec4 color;
+in vec4 vertex;
 
-void main(void)
+out vec4 mycolor;
+
+void main()
 {
-	// Store the input color for the pixel shader to use.
-	color = inputColor.rgb;
+    
+	gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(vertex.rgb, 1.0);  
+	//mat4 m(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+	//gl_Position = m*vec4(vertex.rgb,1.0);
+    //gl_Position = vec4(vertex.rgb,1.0);
+    mycolor = vec4(0.0, 0.0, 1.0, 1.0); 
 }
