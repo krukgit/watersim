@@ -95,7 +95,7 @@ __global__ void addDropKernel(unsigned int width, float *gfout, int i, int j, in
 	
 	if ((i-x)*(i-x) + (j-y)*(j-y) < r*r)
 		for (int k=1; k<9; k++)
-			fout[k] += float(r*r - (i-x)*(i-x) - (j-y)*(j-y)) / float(r*r) / 8.0;
+			fout[k] += float(r*r - (i-x)*(i-x) - (j-y)*(j-y)) / float(r*r) / 24.0;
 }
 
 __global__ void initKernel(unsigned int width, float *gfin, float *gfout, float ih)

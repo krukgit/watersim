@@ -207,9 +207,13 @@
     <ClCompile Include="lb.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="grass.fs" />
+    <None Include="grass.vs" />
     <None Include="lb.fs" />
     <None Include="lb.ps" />
     <None Include="lb.vs" />
+    <None Include="pool.fs" />
+    <None Include="pool.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

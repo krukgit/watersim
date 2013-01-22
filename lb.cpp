@@ -28,7 +28,7 @@ glm::mat4 viewMatrix; // Store the view matrix
 glm::mat4 modelMatrix; // Store the model matrix  
 
 int mouse_old_x, mouse_old_y, mouse_buttons = 0;
-float rotate_x = 0.0, rotate_y = 0.0, translate_z = -3.0;
+float rotate_x = 0.0, rotate_y = 0.0, translate_x = 0.0, translate_y = -0.2, translate_z = -3.0;
 
 int mode=1;
 
@@ -47,6 +47,11 @@ GLuint height_map;
 GLuint colors;
 GLuint normals;
 GLuint indices;
+GLuint grass;
+GLuint pool;
+
+int numGrassVertices;
+int numPoolVertices;
 
 void createVBO(GLuint* vbo);
 void createIndexMap(GLuint* vbo);
@@ -59,41 +64,16 @@ void motion(int x, int y);
 
 void initArrays();
 void initialize();
-GLhandleARB shaderProgramBuild(const GLchar *vertex, const GLchar *fragment);
+GLhandleARB shaderProgramBuild(const GLchar *vertex, const GLchar *fragment, int attach);
 //void runCuda(struct cudaGraphicsResource **vbo_resource);
 
 GLhandleARB shaderProgram;
 GLhandleARB shaderProgramGrass;
-/*
-GLchar vertexShaderSource[] = "\n\
-#version 150\n\
-in vec4 vertex;\n\
-in vec4 color;\n\
-out vec4 mycolor;\n\
-void\n\
-main()\n\
-{\n\
-vec4 x(1.0, 0.0, 0.0, 0.0);\n\
-vec4 y(0.0, 1.0, 0.0, 0.0);\n\
-vec4 z(0.0, 0.0, 1.0, 0.0);\n\
-vec4 w(0.0, 0.0, 1.0, 0.0);\n\
-mat4 m(x,y,z,w);\n\
-    gl_Position = m*vec4(vertex.rgb,1.0);\n\
-    mycolor = vec4(0.0, vertex.g*10., 1.0, 1.0); // not transforming the color, just passing it to the fragment shader\n\
-}\n\
-";
-GLchar fragmentShaderSource[] = "\n\
-#version 150\n\
-in vec4 mycolor;\n\
-out vec4 fragmentColor;\n\
-void\n\
-main()\n\
-{\n\
-    fragmentColor = mycolor;\n\
-}\n\
-";
-*/
+GLhandleARB shaderProgramPool;
+
 GLchar *fragmentShaderSource, *vertexShaderSource;
+GLchar *fragmentShaderSourceGrass, *vertexShaderSourceGrass;
+GLchar *fragmentShaderSourcePool, *vertexShaderSourcePool;
 using namespace std;
 GLchar* read(const char* file_name)
 {
@@ -125,43 +105,6 @@ int main(int argc, char** argv)
 	cudaDeviceReset();
     exit(0);
 }		   
-/*
-bool initShaders() 
-{
-	
-	const char * my_fragment_shader_source = "lb.fs";
-	const char * my_vertex_shader_source = "lb.ps";
-
-	GLenum my_program;
-	GLenum my_vertex_shader;
-	GLenum my_fragment_shader;
-	GLenum my_pixel_shader;
- 
-	// Create Shader And Program Objects
-	my_program = glCreateProgramObjectARB();
-	my_vertex_shader = glCreateShaderObjectARB(GL_VERTEX_SHADER_ARB);
-	my_fragment_shader = glCreateShaderObjectARB(GL_FRAGMENT_SHADER_ARB);
- 
-	// Load Shader Sources
-	glShaderSourceARB(my_vertex_shader, 1, &my_vertex_shader_source, NULL);
-	glShaderSourceARB(my_fragment_shader, 1, &my_fragment_shader_source, NULL);
- 
-	// Compile The Shaders
-	glCompileShaderARB(my_vertex_shader);
-	glCompileShaderARB(my_fragment_shader);
- 
-	// Attach The Shader Objects To The Program Object
-	glAttachObjectARB(my_program, my_vertex_shader);
-	glAttachObjectARB(my_program, my_fragment_shader);
- 
-	// Link The Program Object
-	glLinkProgramARB(my_program);
- 
-	// Use The Program Object Instead Of Fixed Function OpenGL
-	glUseProgramObjectARB(my_program);
-
-	return true;
-}*/
 
 bool initGL(int *argc, char **argv)
 {
@@ -193,6 +136,35 @@ bool initGL(int *argc, char **argv)
 	return true;
 }
 
+bool checkErrors() {
+switch ( glGetError() ) {
+case GL_NO_ERROR: {
+return true;
+}
+case GL_INVALID_ENUM: {
+cout << "GL_INVALID_ENUM" << endl;
+break;
+}
+case GL_INVALID_VALUE: {
+cout << "GL_INVALID_VALUE" << endl;
+break;
+}
+case GL_INVALID_OPERATION: {
+cout << "GL_INVALID_OPERATION" << endl;
+break;
+}
+case GL_INVALID_FRAMEBUFFER_OPERATION: {
+cout << "GL_INVALID_FRAMEBUFFER_OPERATION" << endl;
+break;
+}
+case GL_OUT_OF_MEMORY: {
+cout << "GL_OUT_OF_MEMORY" << endl;
+break;
+}
+}
+return false;
+}
+
 bool init(int argc, char** argv)
 {
     //sdkCreateTimer( &timer );
@@ -214,6 +186,58 @@ bool init(int argc, char** argv)
 	createVBO(&colors);
 	createIndexMap(&indices);
 
+	GLfloat _maxS = -1.0f;
+	GLfloat _maxT = 1.0f;
+	
+	GLfloat _far = 100.0f;
+	GLfloat _z = -0.2f;
+	GLfloat _near = 1.0f;
+	numGrassVertices = 13;
+	GLfloat	 vertices[] = {  
+		_far,	_z,		_far,		// 1
+		-_far,	_z,		_far,		// 2
+		_far,	_z,		_near,		// 3
+		-_far,	_z,		_near,		// 4
+		-_near,	_z,		_near,		// 5
+		-_far,	_z,		-_far,		// 6
+		-_near,	_z,		-_far,		// 7
+		-_near,	_z,		-_near, 	// 8
+		_far,	_z,		-_far,		// 9
+		_far,	_z,		-_near, 	// 10
+		_far,	_z,		_near,		// 11
+		_near,	_z,		-_far, 	// 13
+		
+		_near,	_z,		_near		// 12
+		
+	};
+
+	glGenBuffers( 1, &grass ); // Generate 1 buffer
+	glBindBuffer( GL_ARRAY_BUFFER, grass );
+	glBufferData( GL_ARRAY_BUFFER, sizeof( vertices ), vertices, GL_DYNAMIC_DRAW );
+
+	GLfloat bottom = -1.0;
+	GLfloat one = 1.0;
+	GLfloat top = _z;
+	numPoolVertices = 12;
+	GLfloat	 poolVertices[] = {  
+		-one, bottom, -one,
+		one, bottom, -one,
+		-one, bottom, one,
+		one, bottom, one,
+		one, top, one,
+		one, bottom, -one,
+		one, top, -one,
+		-one, bottom, -one,
+		-one, top, -one,
+		-one, bottom, one,
+		-one, top, one,
+		one, top, one
+	};
+
+	glGenBuffers( 1, &pool); // Generate 1 buffer
+	glBindBuffer( GL_ARRAY_BUFFER, pool );
+	glBufferData( GL_ARRAY_BUFFER, sizeof( poolVertices ), poolVertices, GL_DYNAMIC_DRAW );
+
 	
 
 	/*glEnable(GL_LIGHTING);
@@ -228,9 +252,9 @@ bool init(int argc, char** argv)
 	glEnable(GL_LIGHT0);
 	
 	glShadeModel(GL_SMOOTH);*/
-//	glEnable(GL_BLEND);
-//	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBlendColor(0.0, 0.0, 1.0, 0.5);
 
 	cudaMalloc((void**)&d_fin, mesh_width * mesh_height * 9 * sizeof(float));
 	cudaMalloc((void**)&d_fout, mesh_width * mesh_height * 9 * sizeof(float));
@@ -301,9 +325,78 @@ void createIndexMap(GLuint *vbo) {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
+void drawWater() {
+	glUseProgram(shaderProgram);
+	//viewMatrix = glm::translate(viewMatrix, glm::vec3(0.0f, 0.0f, -1.0f)); // Create our view matrix which will translate us back 5 units  	
+	int projectionMatrixLocation = glGetUniformLocation(shaderProgram, "projectionMatrix");
+	int viewMatrixLocation = glGetUniformLocation(shaderProgram, "viewMatrix");
+	int modelMatrixLocation = glGetUniformLocation(shaderProgram, "modelMatrix");
+	glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, &projectionMatrix[0][0]); // Send our projection matrix to the shader  
+	glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, &viewMatrix[0][0]); // Send our view matrix to the shader  
+	glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]); // Send our model matrix to the shader  
+	
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    glBindBuffer(GL_ARRAY_BUFFER, height_map);
+	glEnableVertexAttribArray(height_map);
+	glVertexAttribPointer(height_map, 4, GL_FLOAT, GL_FALSE, sizeof(float)*4, 0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, colors);
+	glEnableVertexAttribArray(colors);
+	glVertexAttribPointer(colors, 4, GL_FLOAT, GL_FALSE, sizeof(float)*4, 0);
+
+    glBindVertexArray(height_map);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawElements(GL_TRIANGLE_STRIP, mesh_width*2*(mesh_height-1)+mesh_height-2, GL_UNSIGNED_INT, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+void drawPool() {
+	glUseProgram(shaderProgramPool);
+	int projectionMatrixLocation = glGetUniformLocation(shaderProgramPool, "projectionMatrix");
+	int viewMatrixLocation = glGetUniformLocation(shaderProgramPool, "viewMatrix");
+	int modelMatrixLocation = glGetUniformLocation(shaderProgramPool, "modelMatrix");
+	glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, &projectionMatrix[0][0]); 
+	glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, &viewMatrix[0][0]); 
+	glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]); 
+
+	//checkErrors();
+
+	glBindVertexArray(pool);
+	glBindBuffer(GL_ARRAY_BUFFER, pool);
+	glEnableVertexAttribArray( pool );
+	glVertexAttribPointer(pool, 3, GL_FLOAT, GL_FALSE, sizeof(float)*3, 0);
+	glDrawArrays( GL_TRIANGLE_STRIP, 0, numPoolVertices );
+
+}
+
+void drawGrass() {
+	glUseProgram(shaderProgramGrass);
+	int projectionMatrixLocation = glGetUniformLocation(shaderProgramGrass, "projectionMatrix");
+	int viewMatrixLocation = glGetUniformLocation(shaderProgramGrass, "viewMatrix");
+	int modelMatrixLocation = glGetUniformLocation(shaderProgramGrass, "modelMatrix");
+	glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, &projectionMatrix[0][0]); 
+	glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, &viewMatrix[0][0]); 
+	glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]); 
+
+	//checkErrors();
+
+	glBindVertexArray(grass);
+	glBindBuffer(GL_ARRAY_BUFFER, grass);
+	glEnableVertexAttribArray( grass );
+	glVertexAttribPointer(grass, 3, GL_FLOAT, GL_FALSE, sizeof(float)*3, 0);
+	glDrawArrays( GL_TRIANGLE_STRIP, 0, numGrassVertices );
+
+}
+
 void display()
 {
     runCuda();
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
 
 	    // added this static boolean do do one-time OpenGL related initialization.
     static bool doInitialize = true;
@@ -314,76 +407,33 @@ void display()
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f) ;
 		vertexShaderSource = read("lb.vs");
 		fragmentShaderSource = read("lb.fs");
-		shaderProgram = shaderProgramBuild(vertexShaderSource, fragmentShaderSource);	
+		shaderProgram = shaderProgramBuild(vertexShaderSource, fragmentShaderSource, 1);	
+
+		vertexShaderSourceGrass = read("grass.vs");
+		fragmentShaderSourceGrass = read("grass.fs");
+		shaderProgramGrass = shaderProgramBuild(vertexShaderSourceGrass, fragmentShaderSourceGrass, 2);	
+
+		vertexShaderSourcePool = read("pool.vs");
+		fragmentShaderSourcePool = read("pool.fs");
+		shaderProgramPool = shaderProgramBuild(vertexShaderSourcePool, fragmentShaderSourcePool, 3);	
     }
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-	glUseProgram(shaderProgram);
-	
-	
-	projectionMatrix = glm::perspective(30.0f, (float)window_width / (float)window_height, 0.1f, 100.f);  // Create our perspective projection matrix  
-	viewMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, translate_z)); // Create our view matrix which will translate us back 5 units  
+	modelMatrix = glm::mat4(1.0f);
+	viewMatrix = glm::mat4(1.0f);
+	projectionMatrix = glm::mat4(1.0f);
+	modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));  // Create our model matrix which will halve the size of our model  
 	viewMatrix = glm::rotate(viewMatrix, rotate_x, glm::vec3(1.0f, 0.0f, 0.0f));
 	viewMatrix = glm::rotate(viewMatrix, rotate_y, glm::vec3(0.0f, 1.0f, 0.0f));
-	modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f));  // Create our model matrix which will halve the size of our model  
+	viewMatrix = glm::translate(viewMatrix, glm::vec3(0.0, -0.4, translate_z)); // Create our view matrix which will translate us back 5 units  
+	projectionMatrix = glm::perspective(30.0f, (float)window_width / (float)window_height, 0.1f, 100.f);  // Create our perspective projection matrix  
+
 	
-		int projectionMatrixLocation = glGetUniformLocation(shaderProgram, "projectionMatrix");
-		int viewMatrixLocation = glGetUniformLocation(shaderProgram, "viewMatrix");
-		int modelMatrixLocation = glGetUniformLocation(shaderProgram, "modelMatrix");
-		glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, &projectionMatrix[0][0]); // Send our projection matrix to the shader  
-		glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, &viewMatrix[0][0]); // Send our view matrix to the shader  
-		glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]); // Send our model matrix to the shader  
+	drawWater();
+	drawPool();
 	
-    
-	//float scale = 0.5;
-	//int scaleLocation = glGetUniformLocation(shaderProgram, "scale");
-	//glUniform1f(scaleLocation, scale);
+	drawGrass();
 	
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glTranslatef(0.0, 0.0, translate_z);
-    glRotatef(rotate_x, 1.0, 0.0, 0.0);
-    glRotatef(rotate_y, 0.0, 1.0, 0.0);
-	
-
-    glBindBuffer(GL_ARRAY_BUFFER, height_map);
-	//glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableVertexAttribArray(height_map);
-	glVertexAttribPointer(height_map, 4, GL_FLOAT, GL_FALSE, sizeof(float)*4, 0);
-	//glVertexPointer(4, GL_FLOAT, 0, 0);
-	
-	//glVertexAttribPointer(height_map, 4, GL_FLOAT, GL_FALSE, 0, 0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, colors);
-	//glEnableClientState(GL_COLOR_ARRAY);
-	//glColorPointer(4, GL_FLOAT, 0, 0);
-	glEnableVertexAttribArray(colors);
-	glVertexAttribPointer(colors, 4, GL_FLOAT, GL_FALSE, sizeof(float)*4, 0);
-	//glVertexAttribPointer(colors, 4, GL_FLOAT, GL_FALSE, 0, 0);
-
-
-    //glEnableVertexAttribArray(height_map);
-    //glEnableVertexAttribArray(colors);
-
-    
-	//glBindBuffer(GL_COLOR_ARRAY, colors);
-	//glColorPointer(4, GL_FLOAT, 0, (GLvoid*));
-	//glColorPointer(4, GL_FLOAT, 0, (GLvoid *)0);// (mesh_width * mesh_height * sizeof(float)*4));
-
-    //glEnableClientState(GL_VERTEX_ARRAY);
-	//glEnableClientState(GL_COLOR_ARRAY);
-    //glColor3f(0.0, 0.5, 1.0);
-    glBindVertexArray(height_map);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glDrawElements(GL_TRIANGLE_STRIP, mesh_width*2*(mesh_height-1)+mesh_height-2, GL_UNSIGNED_INT, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	//glDrawArrays(GL_POINTS, 0, mesh_width * mesh_height);
-    
-
-
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisableClientState(GL_COLOR_ARRAY);
 
 
     glutSwapBuffers();
@@ -413,6 +463,18 @@ void keyboard(unsigned char key, int /*x*/, int /*y*/)
 	if (key >= 48 && key <=57)
 		add |= int(pow(2.0, key-48));
     switch(key) {
+		case(38): //UP
+			translate_y += 1.;
+			break;
+		case(40): //DOWN
+			translate_y -= 1.;
+			break;
+		case(37): //LEFT
+			translate_x -= 1.;
+			break;
+		case(39): //RIGHT
+			translate_x += 1.;
+			break;
 		case(27) : // ESC
 			exit(0);
 			break;
@@ -523,7 +585,7 @@ shaderCompile(const GLchar *text, GLenum type)
     exit(1);
 }
 
-GLhandleARB shaderProgramBuild(const GLchar *vertex, const GLchar *fragment)
+GLhandleARB shaderProgramBuild(const GLchar *vertex, const GLchar *fragment, int attach)
 {
     GLhandleARB programHandle;
     GLint       status;
@@ -550,11 +612,15 @@ GLhandleARB shaderProgramBuild(const GLchar *vertex, const GLchar *fragment)
     glAttachShader(programHandle, shaderCompile(fragment,GL_FRAGMENT_SHADER));
     // Check for any other errors and print them.
     glutReportErrors();
-	printf("%d %d\n",height_map,colors);
-
-	glBindAttribLocation(programHandle, colors, "color");
-	glBindAttribLocation(programHandle, height_map, "vertex");
-
+	
+	if (attach == 1) {
+		glBindAttribLocation(programHandle, colors, "color");
+		glBindAttribLocation(programHandle, height_map, "vertex");
+	} else if (attach == 2) {
+		glBindAttribLocation(programHandle, grass, "position");
+	} else if (attach == 3) {
+			glBindAttribLocation(programHandle, pool, "position");
+	}
     // Attempt to the link the shader objects into a program
     glLinkProgram(programHandle);
     // Check for any other errors and print them.
@@ -589,7 +655,7 @@ GLhandleARB shaderProgramBuild(const GLchar *vertex, const GLchar *fragment)
     fprintf(stderr,"log text:\n");
     fprintf(stderr,"------------\n");
     fprintf(stderr,"%s\n",log);
-    
+    getchar();
     delete [] log;
     exit(1);
 }
