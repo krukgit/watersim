@@ -75,7 +75,7 @@
     <OutDir>./bin/win32/$(Configuration)/</OutDir>
     <IntDir>$(Platform)/$(Configuration)/</IntDir>
     <IncludePath>$(NVCUDASAMPLES_ROOT)\common\inc;$(CUDA_PATH)\include;$(DXSDK_DIR)\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(NVCUDASAMPLES_ROOT)\common\lib\Win32;$(CUDA_PATH)\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>C:\Users\cc1\Dropbox\Moje dokumenty\CUDA\git\watersim\bin\win32\Debug;$(NVCUDASAMPLES_ROOT)\common\lib\Win32;$(CUDA_PATH)\lib;$(LibraryPath)</LibraryPath>
     <ExecutablePath>C:\Users\cc1\Desktop\cyclic\glew-1.6.0\bin;$(ExecutablePath)</ExecutablePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -102,7 +102,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>cudart.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;glew32.lib;freeglut.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cudart.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;glew32.lib;freeglut.lib;SDL.lib;SDL_image.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(CudaToolkitLibDir);../../common/lib/$(PlatformName);</AdditionalLibraryDirectories>
       <OutputFile>$(OutDir)/LB.exe</OutputFile>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
@@ -207,6 +207,8 @@
     <ClCompile Include="lb.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="cubemap.fs" />
+    <None Include="cubemap.vs" />
     <None Include="grass.fs" />
     <None Include="grass.vs" />
     <None Include="lb.fs" />
