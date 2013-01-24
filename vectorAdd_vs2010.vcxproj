@@ -204,7 +204,11 @@
     <CudaCompile Include="lb.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="cubemap.cpp" />
+    <ClCompile Include="grass.cpp" />
     <ClCompile Include="lb.cpp" />
+    <ClCompile Include="pool.cpp" />
+    <ClCompile Include="water.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cubemap.fs" />
@@ -216,6 +220,11 @@
     <None Include="lb.vs" />
     <None Include="pool.fs" />
     <None Include="pool.vs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="common.h" />
+    <ClInclude Include="cubemap.h" />
+    <ClInclude Include="GLProgram.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

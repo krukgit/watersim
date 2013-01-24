@@ -43,8 +43,23 @@ __global__ void stepKernel(unsigned int width, float *gfin, float* gfout, float 
 	for (int k=0; k<9; k++)
 		fout[k] = fin[k] + (feq[k] - fin[k])/tau;
 }
+__global__ void normalKernel(float4* pos, float4* color, unsigned int width, unsigned int height)
+{
+	int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    int offset = x + y * width;
+	
+	float2 slope = make_float2(0.0f, 0.0f);
 
-__global__ void proKernel(float4* pos, float4* color, unsigned int width, unsigned int height, float *gfin, float* gfout)
+    if ((x > 0) && (y > 0) && (x < width-1) && (y < height-1))
+    {
+        slope.x = pos[offset+1].y - pos[offset-1].y;
+        slope.y = pos[offset+width].y - pos[offset-width].y;
+    }
+	color[offset] = make_float4(slope.x, slope.y, 0.0f, 0.0f);
+
+}
+__global__ void proKernel(float4* pos, float4* color, /*float3* normals,*/ unsigned int width, unsigned int height, float *gfin, float* gfout)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -83,8 +98,13 @@ __global__ void proKernel(float4* pos, float4* color, unsigned int width, unsign
 		cScale = 1.0;
 	//color[offset] = make_float4(0.,0.,1.,0.);
 	color[offset] = make_float4(0.,0.5*cScale,cScale,0.0);
-	//pos[width*height + offset] = make_float4(uu,vv,0.0,0.0);
+
+    //float heightScale = 0.5;
+	//float2 size = make_float2(256.0f, 256.0f);
+
+	//normals[offset] = normalize(cross( vec3(0.0, slope.y*heightScale, 2.0 / size.x), vec3(2.0 / size.y, slope.x*heightScale, 0.0)));
 }
+	//pos[width*height + offset] = make_float4(uu,vv,0.0,0.0);
 
 __global__ void addDropKernel(unsigned int width, float *gfout, int i, int j, int r)
 {
@@ -95,7 +115,7 @@ __global__ void addDropKernel(unsigned int width, float *gfout, int i, int j, in
 	
 	if ((i-x)*(i-x) + (j-y)*(j-y) < r*r)
 		for (int k=1; k<9; k++)
-			fout[k] += float(r*r - (i-x)*(i-x) - (j-y)*(j-y)) / float(r*r) / 24.0;
+			fout[k] += float(r*r - (i-x)*(i-x) - (j-y)*(j-y)) / float(r*r) / 44.0;
 }
 
 __global__ void initKernel(unsigned int width, float *gfin, float *gfout, float ih)
@@ -129,7 +149,7 @@ float fx = 0.0;
 float fy = 0.0;
 float df = 0.0001;
 // Wrapper for the __global__ call that sets up the kernel call
-extern "C" void launch_kernel(float4* pos, float4* color, unsigned int mesh_width, unsigned int mesh_height, int add, float *d_fin, float *d_fout)
+extern "C" void launch_kernel(float4* pos, float4* color, /*float3* normals, */unsigned int mesh_width, unsigned int mesh_height, int add, float *d_fin, float *d_fout)
 {
     dim3 block(16, 16, 1);
     dim3 grid(mesh_width / block.x, mesh_height / block.y, 1);
@@ -161,7 +181,8 @@ extern "C" void launch_kernel(float4* pos, float4* color, unsigned int mesh_widt
 		initKernel<<< grid, block >>>(mesh_width, d_fin, d_fout, 0.11);
 
     
-	proKernel<<< grid, block >>>(pos, color, mesh_width, mesh_height, d_fin, d_fout);
+	proKernel<<< grid, block >>>(pos, color, /*normals, */mesh_width, mesh_height, d_fin, d_fout);
+	normalKernel<<< grid, block >>>(pos, color, mesh_width, mesh_height);
 }
 
 #endif // #ifndef _SIMPLEGL_KERNEL_H_
